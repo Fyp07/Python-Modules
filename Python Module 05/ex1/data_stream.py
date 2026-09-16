@@ -109,6 +109,25 @@ class LogProcessor(DataProcessor):
             self._save(f"{data['log_level']}: {data['log_message']}")
 
 
+class DataStream():
+    def __init__(self, data: Any) -> None:
+        self._processors: list[DataProcessor] = []
+
+    def register_processor(self, proc: DataProcessor) -> None:
+        self._processors.append(proc)
+
+    def process_stream(self, stream: list[Any]) -> None:
+        for item in stream:
+            flag = False
+            for proc in self._processors:
+                if proc.validate(item):
+                    proc.ingest(item)
+                    flag = True
+                    break
+            if flag is False:
+                raise DataProcessorError("Error")
+
+
 def title(text: str) -> None:
     """Display a title"""
 
@@ -122,68 +141,15 @@ def display_output(processor: DataProcessor,
                    label: str, count: int = 1) -> None:
     """Display the output method"""
 
-    print(f"\nExtracting {count} value(s)...")
+    print(f"\nExtracting {count} value...")
     print("-" * 50)
-    try:
-        for i in range(count):
-            print(f"{label} {i}: {processor.output()[1]}")
-    except IndexError:
-        print("Error: The list is empty")
+    for i in range(count):
+        print(f"{label} {i}: {processor.output()[1]}")
     print("-" * 50)
 
 
 def main() -> None:
-
-    numeric = NumericProcessor()
-    text = TextProcessor()
-    log = LogProcessor()
-
-    print("=== Code Nexus - Data Processor ===")
-
-    title("Testing Numeric Processor...")
-
-    # Testing validate with both valid and invalid parameters
-    print(f"Trying to validate input '42': {numeric.validate(42)}")
-    print(f"Trying to validate input 'Hello': {numeric.validate('Hello')}")
-
-    # Testing invalid ingestion parameter
-    print("Testing invalid ingestion of"
-          "string 'foo' without prior validation:")
-    try:
-        print(numeric.ingest('foo'))
-    except NumericProcessorError as e:
-        print(f"Got exception: {e}")
-
-    # Using valid ingest and output methods
-    print("Processing data: [1, 2, 3, 4, 5]")
-    numeric.ingest([1, 2, 3, 4, 5])
-    display_output(numeric, "Numeric value", 3)
-
-    title("Testing Text Processor...")
-
-    # Testing validate with an invalid parameter
-    print(f"Trying to validate input '42': "
-          f"{text.validate(42)}")
-
-    # Using valid ingest and output methods
-    print("Processing data: ['Hello', 'Nexus', 'World']")
-    text.ingest(['Hello', 'Nexus', 'Word'])
-    display_output(text, "Text value")
-
-    title("Testing Log Processor...")
-
-    # Testing validate with an invalid parameter
-    print(f"Trying to validate input 'Hello': {log.validate('Hello')}")
-
-    # Using valid ingest and output methods
-    print("Processing data:  [{'log_level': 'NOTICE', 'log_message':"
-          "'Connection to server'}, {'log_level': 'ERROR', 'log_message':"
-          "'Unauthorized access!!'}]")
-    log.ingest([{'log_level': 'NOTICE',
-                 'log_message': 'Connection to server'},
-                {'log_level': 'ERROR',
-                 'log_message': 'Unauthorized access!!'}])
-    display_output(log, "Log entry", 2)
+    pass
 
 
 if __name__ == "__main__":
