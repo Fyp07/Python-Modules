@@ -47,6 +47,9 @@ class DataProcessor(ABC):
     def output(self) -> tuple[int, str]:
         return self._storage.pop(0)
 
+    def get_storage(self) -> list[tuple[int, str]]:
+        return self._storage
+
 
 class NumericProcessor(DataProcessor):
     """Processes int, float, and lists of both types."""
@@ -110,8 +113,9 @@ class LogProcessor(DataProcessor):
 
 
 class DataStream():
-    def __init__(self, data: Any) -> None:
+    def __init__(self) -> None:
         self._processors: list[DataProcessor] = []
+        self.count: list[int] = [0]
 
     def register_processor(self, proc: DataProcessor) -> None:
         self._processors.append(proc)
@@ -124,8 +128,17 @@ class DataStream():
                     proc.ingest(item)
                     flag = True
                     break
-            if flag is False:
-                raise DataProcessorError("Error")
+            if not flag:
+                print("DataStream error - Can't process"
+                      f"element in stream: {item}")
+
+    def print_processors_stats(self) -> None:
+        print("== DataStream statistics ==")
+        if not self._processors:
+            print("No processor found, no data")
+        for proc in self._processors:
+            print(f"{proc.__class__.__name__}: total {proc.rank} items "
+                  f"processed, remaining {len(proc._storage)} on processor")
 
 
 def title(text: str) -> None:
@@ -141,7 +154,7 @@ def display_output(processor: DataProcessor,
                    label: str, count: int = 1) -> None:
     """Display the output method"""
 
-    print(f"\nExtracting {count} value...")
+    print(f"\nExtracting {count} value(s)...")
     print("-" * 50)
     for i in range(count):
         print(f"{label} {i}: {processor.output()[1]}")
@@ -149,7 +162,56 @@ def display_output(processor: DataProcessor,
 
 
 def main() -> None:
-    pass
+
+    print("=== Code Nexus - Data Stream ===")
+
+    numeric = NumericProcessor()
+    text = TextProcessor()
+    log = LogProcessor()
+
+    print("\nInitialize Data Stream...")
+    stream = DataStream()
+    stream.print_processors_stats()
+
+    print("\nRegistering Numeric Processor")
+    stream.register_processor(numeric)
+
+    print("Send first batch of data on stream: ['Hello world', "
+          "[3.14, -1, 2.71], "
+          "[{'log_level': 'WARNING', 'log_message': "
+          "'Telnet access! Use ssh instead'}, "
+          "{'log_level': 'INFO', 'log_message': "
+          "'User wil isconnected'}], 42, ['Hi', 'five']] ")
+
+    full_list: list = ['Hello world',
+                       [3.14, -1, 2.71],
+                       [{'log_level': 'WARNING',
+                        'log_message': 'Telnet access! Use ssh instead'},
+                        {'log_level': 'INFO',
+                        'log_message': 'User wil is connected'}],
+                       42, ['Hi', 'five']]
+
+    stream.process_stream(full_list)
+    stream.print_processors_stats()
+
+    print("Registering other data processors")
+    print("Send the same batch again")
+
+    stream.register_processor(text)
+    stream.register_processor(log)
+
+    print("== DataStream statistics== ")
+    stream.process_stream(full_list)
+    stream.print_processors_stats()
+
+    print("Consume some elements from the data processors:"
+          "Numeric 3, Text 2, Log 1")
+
+    display_output(numeric, "Numeric Processor", 3)
+    display_output(text, "Text Processor", 2)
+    display_output(log, "Log Processor")
+
+    stream.print_processors_stats()
 
 
 if __name__ == "__main__":
